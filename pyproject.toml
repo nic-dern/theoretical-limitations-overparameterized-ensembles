@@ -1,0 +1,27 @@
+[tool.poetry]
+name = "overparameterized-ensembles"
+version = "0.1.0"
+description = ""
+authors = ["unknown"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+typer = {extras = ["all"], version = "^0.12.5"}
+torch = "^2.4.1"
+numpy = "^2.1.1"
+matplotlib = "^3.9.2"
+scikit-learn = "^1.5.2"
+
+[tool.poetry.scripts]
+average-difference-vs_num-features="overparameterized_ensembles.experiments.average_difference_vs_num_features:app"
+convergence-expected-value-term="overparameterized_ensembles.experiments.convergence_expected_value_term:app"
+generalization-error-decay="overparameterized_ensembles.experiments.generalization_error_decay:app"
+lipschitz-difference-infinite-models="overparameterized_ensembles.experiments.lipschitz_difference_infinite_models:app"
+variance-vs-number-of-features="overparameterized_ensembles.experiments.variance_vs_number_of_features:app"
+variance-vs-points-in-range="overparameterized_ensembles.experiments.variance_vs_points_in_range:app"
+visualize-models="overparameterized_ensembles.experiments.visualize_models:app"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
