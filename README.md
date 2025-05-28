@@ -2,6 +2,8 @@
 
 This repository contains the code to reproduce the experiments in the paper *Theoretical Limitations of Ensembles in the Age of Overparameterization* by Niclas Dern, John P. Cunningham, and Geoff Pleiss ([arXiv link](https://arxiv.org/abs/2410.16201)).
 
+We will soon add the code for additional experiments we conducted with neural networks.
+
 ## Table of Contents
 
 - [Theoretical Limitations of Ensembles in the Age of Overparameterization](#theoretical-limitations-of-ensembles-in-the-age-of-overparameterization)
