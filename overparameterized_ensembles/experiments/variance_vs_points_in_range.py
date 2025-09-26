@@ -55,6 +55,9 @@ def variance_vs_points_in_range(
         20, help="Number of points to test per dimension"
     ),
     random_seed: int = typer.Option(DEFAULT_RANDOM_SEED, help="Random seed"),
+    plot_on_same_axis: bool = typer.Option(
+        False, help="Plot variance and r_perp_squared on the same axis"
+    ),
 ):
     """
     Run the variance and its subterms vs. points in range experiment
@@ -93,6 +96,7 @@ def variance_vs_points_in_range(
         random_weights_distribution=random_weights_distribution,
         case_type=case_type,
         number_simulations_per_size=number_points_to_test,
+        plot_on_same_axis=plot_on_same_axis,
     )
 
     # Create the experiment
@@ -207,7 +211,12 @@ class VarianceVsPointsInRangeExperiment(Experiment):
                 num_samples=self.experiment_parameters.number_simulations_per_size,
                 additional_points=additional_points,
                 additional_points_labels=["Training Data Points"],
-                title="Ensemble Variance",
+                additional_functions=[[results["kernel_model"].r_perp_squared]]
+                if self.experiment_parameters.plot_on_same_axis
+                else None,
+                additional_functions_labels=[r"$r_\perp^2$"]
+                if self.experiment_parameters.plot_on_same_axis
+                else None,
             )
         elif self.experiment_parameters.data_dimension == 2:
             num_samples = (
@@ -224,8 +233,13 @@ class VarianceVsPointsInRangeExperiment(Experiment):
                 num_samples=num_samples,
                 additional_points=additional_points,
                 additional_points_labels=["Training Data Points"],
-                title="Ensemble Variance",
                 plot_highest_point=False,
+                additional_functions=[[results["kernel_model"].r_perp_squared]]
+                if self.experiment_parameters.plot_on_same_axis
+                else None,
+                additional_functions_labels=[r"$r_\perp^2$"]
+                if self.experiment_parameters.plot_on_same_axis
+                else None,
             )
 
         if self.experiment_parameters.data_dimension <= 2:
@@ -233,38 +247,24 @@ class VarianceVsPointsInRangeExperiment(Experiment):
             save_figure(plt, self.experiment_dir / "variance_vs_points_in_range.pdf")
 
         # Plot the r_perp_squared vs. points in range
-        if self.experiment_parameters.data_dimension == 1:
-            plt = plot2d(
-                results["kernel_model"].r_perp_squared,
-                f_label=r"$r_\perp^2$",
-                input_range=results["data_generating_function"].get_input_range(),
-                num_samples=self.experiment_parameters.number_simulations_per_size,
-                additional_points=additional_points,
-                additional_points_labels=["Training Data Points"],
-                title="GP Variance",
-                plot_highest_point=False,
-            )
-        elif self.experiment_parameters.data_dimension == 2:
-            num_samples = (
-                self.experiment_parameters.number_simulations_per_size
-                if self.experiment_parameters.case_type == "subexponential"
-                else int(
-                    self.experiment_parameters.number_simulations_per_size ** (1 / 2)
+        if not self.experiment_parameters.plot_on_same_axis:
+            if self.experiment_parameters.data_dimension == 1:
+                plt = plot2d(
+                    results["kernel_model"].r_perp_squared,
+                    f_label=r"$r_\perp^2$",
+                    input_range=results["data_generating_function"].get_input_range(),
+                    num_samples=self.experiment_parameters.number_simulations_per_size,
+                    additional_points=additional_points,
+                    additional_points_labels=["Training Data Points"],
+                    plot_highest_point=False,
                 )
-            )
-            plt = plot3d(
-                results["kernel_model"].r_perp_squared,
-                f_label=r"$r_\perp^2$",
-                input_range=results["data_generating_function"].get_input_range(),
-                num_samples=num_samples,
-                additional_points=additional_points,
-                additional_points_labels=["Training Data Points"],
-                title="GP Variance",
-                plot_highest_point=False,
-            )
 
-        if self.experiment_parameters.data_dimension <= 2:
-            # Save the plot
-            save_figure(
-                plt, self.experiment_dir / "r_perp_squared_vs_points_in_range.pdf"
-            )
+            if self.experiment_parameters.data_dimension <= 2:
+                # Save the plot
+                save_figure(
+                    plt, self.experiment_dir / "r_perp_squared_vs_points_in_range.pdf"
+                )
+
+
+if __name__ == "__main__":
+    app()

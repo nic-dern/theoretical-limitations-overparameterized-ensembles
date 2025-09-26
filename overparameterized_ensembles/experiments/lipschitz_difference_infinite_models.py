@@ -275,12 +275,6 @@ class LipschitzDifferenceInfiniteModelsExperiment(Experiment):
         return results
 
     def _visualize_results(self, results):
-        plt_title = ""
-        if self.comparison_mode == "single_model":
-            plt_title = "Ridge/ridgeless Single Model Diff."
-        elif self.comparison_mode == "ensemble":
-            plt_title = "Ridge/ridgeless Ensemble Diff."
-
         # Plot the effective ridge vs. ridge parameter
         plt = plot_graph(
             x_values=results["ridge_values"],
@@ -288,7 +282,6 @@ class LipschitzDifferenceInfiniteModelsExperiment(Experiment):
             labels=["Effective ridge"],
             x_label=r"$\lambda$",
             y_label="Effective ridge",
-            title=plt_title,
         )
 
         # Save the plot
@@ -307,7 +300,6 @@ class LipschitzDifferenceInfiniteModelsExperiment(Experiment):
             ],
             x_label=r"$\lambda$",
             y_label="Prediction error",
-            title=plt_title,
         )
 
         # Save the plot
@@ -326,7 +318,6 @@ class LipschitzDifferenceInfiniteModelsExperiment(Experiment):
             labels=["Mean absolute difference"],
             x_label=r"$\lambda$",
             y_label="Mean absolute difference",
-            title=plt_title,
         )
 
         # Save the plot
@@ -334,8 +325,8 @@ class LipschitzDifferenceInfiniteModelsExperiment(Experiment):
 
         # Plot the differences for the values in the test set
         differences = []
-        print(results["predictions_varied"].shape)
-        print(results["predictions_fixed"].shape)
+        typer.echo(f"Predictions varied shape: {results['predictions_varied'].shape}")
+        typer.echo(f"Predictions fixed shape: {results['predictions_fixed'].shape}")
 
         for i in range(len(results["predictions_varied"])):
             differences.append(
@@ -350,8 +341,11 @@ class LipschitzDifferenceInfiniteModelsExperiment(Experiment):
             y_label=r"$\left|\bar{h}^{(RR)}_{\infty, \lambda}(\cdot) - \bar{h}^{(LS)}_{\infty}(\cdot)\right|$"
             if self.comparison_mode == "ensemble"
             else r"$\left|h^{(RR)}_{\infty, \lambda}(\cdot) - h^{(LS)}_{\infty}(\cdot)\right|$",
-            title=plt_title,
         )
 
         # Save the plot
         save_figure(plt, self.experiment_dir / "difference_between_predictions.pdf")
+
+
+if __name__ == "__main__":
+    app()

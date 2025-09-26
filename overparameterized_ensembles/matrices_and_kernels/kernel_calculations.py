@@ -7,7 +7,9 @@ from scipy.optimize import fsolve
 import numpy as np
 
 
-def calculate_kernel_matrix(X, Y, kernel_name):
+def calculate_kernel_matrix(
+    X, Y, kernel_name, random_weights_distribution_name: str = "normal"
+):
     """
     Calculate the kernel matrix for a given set of inputs X and Y and the kernel name.
 
@@ -18,6 +20,8 @@ def calculate_kernel_matrix(X, Y, kernel_name):
         The input tensor of shape (n_samples_2, n_features).
     kernel_name : str
         The name of the kernel to use (e.g., 'arc-cosine-kernel').
+    random_weights_distribution_name : str, optional
+        The name of the random weights distribution to use for kernels that require it (e.g., 'softplus-kernel'). Defaults to "normal".
 
     Returns:
     K : torch.Tensor
@@ -44,6 +48,8 @@ def calculate_kernel_matrix(X, Y, kernel_name):
     if kernel_name not in kernels:
         raise ValueError("Invalid kernel name")
 
+    if kernel_name == "softplus-kernel":
+        return kernels[kernel_name](X, Y, random_weights_distribution_name)
     return kernels[kernel_name](X, Y)
 
 
@@ -52,7 +58,7 @@ def calculate_kernel_matrix(X, Y, kernel_name):
 SOFTPLUS_FEATURES = None
 
 
-def sofplus_kernel(X, Y):
+def sofplus_kernel(X, Y, random_weights_distribution_name: str = "normal"):
     """
     Computes the softplus kernel between two sets of vectors.
     Note: This is done using the "infinite-width single model" and should only be used when using a normal distribution for the weights.
@@ -62,13 +68,15 @@ def sofplus_kernel(X, Y):
         Input tensor of shape (n_samples_X, n_features)
     Y : torch.Tensor
         Input tensor of shape (n_samples_Y, n_features)
+    random_weights_distribution_name : str, optional
+        The name of the random weights distribution to use. Defaults to "normal".
 
     Returns:
     K : torch.Tensor
         The kernel matrix of shape (n_samples_X, n_samples_Y)
     """
     random_weights_distribution = initialize_random_weights_distribution(
-        "normal", X.size(1)
+        random_weights_distribution_name, X.size(1)
     )
 
     # Number of features

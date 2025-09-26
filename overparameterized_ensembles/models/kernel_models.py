@@ -9,7 +9,12 @@ from overparameterized_ensembles.utils.constants import (
 
 
 class KernelRegressor(torch.nn.Module):
-    def __init__(self, kernel: str, ridge: float = 0.0):
+    def __init__(
+        self,
+        kernel: str,
+        ridge: float = 0.0,
+        random_weights_distribution_name: str = "normal",
+    ):
         """
         Initializes the Kernel Regressor with a given kernel function.
 
@@ -18,6 +23,8 @@ class KernelRegressor(torch.nn.Module):
             The kernel function to use
         ridge : float, optional
             Regularization parameter, by default 0.0
+        random_weights_distribution_name : str, optional
+            The name of the random weights distribution to use for kernels that require it. Defaults to "normal".
         """
         super(KernelRegressor, self).__init__()
         self.kernel = kernel
@@ -25,6 +32,7 @@ class KernelRegressor(torch.nn.Module):
         if ridge < ZERO_REGULARIZATION:
             ridge = ZERO_REGULARIZATION
         self.ridge = ridge
+        self.random_weights_distribution_name = random_weights_distribution_name
 
     def fit(self, X: torch.Tensor, y: torch.Tensor) -> None:
         """
@@ -43,7 +51,10 @@ class KernelRegressor(torch.nn.Module):
 
         # Compute the kernel matrix K and add the ridge regularization term
         K = calculate_kernel_matrix(
-            self.X_train, self.X_train, self.kernel
+            self.X_train,
+            self.X_train,
+            self.kernel,
+            self.random_weights_distribution_name,
         ) + self.ridge * torch.eye(self.X_train.size(0))
 
         # Solve the symmetric system K * alpha = y
@@ -67,7 +78,9 @@ class KernelRegressor(torch.nn.Module):
             raise Exception("Model is not fitted yet.")
 
         # Compute the kernel matrix between training data and new input data
-        K_forward = calculate_kernel_matrix(self.X_train, X, self.kernel)
+        K_forward = calculate_kernel_matrix(
+            self.X_train, X, self.kernel, self.random_weights_distribution_name
+        )
 
         # Predict the output using the learned alpha
         return torch.matmul(K_forward.t(), self.alpha)
@@ -100,7 +113,12 @@ class KernelRegressor(torch.nn.Module):
             Squared RKHS norm
         """
         # Compute the kernel matrix K
-        K = calculate_kernel_matrix(self.X_train, self.X_train, self.kernel)
+        K = calculate_kernel_matrix(
+            self.X_train,
+            self.X_train,
+            self.kernel,
+            self.random_weights_distribution_name,
+        )
 
         # Compute the RKHS norm squared
         return torch.matmul(self.alpha, torch.matmul(K, self.alpha))
@@ -119,14 +137,21 @@ class KernelRegressor(torch.nn.Module):
         """
 
         # Compute kernel(x^*, x^*)
-        K_xx = calculate_kernel_matrix(X, X, self.kernel)
+        K_xx = calculate_kernel_matrix(
+            X, X, self.kernel, self.random_weights_distribution_name
+        )
 
         # Compute kernel(x^*, self.X_train)
-        K_x_train = calculate_kernel_matrix(X, self.X_train, self.kernel)
+        K_x_train = calculate_kernel_matrix(
+            X, self.X_train, self.kernel, self.random_weights_distribution_name
+        )
 
         # Compute kernel(self.X_train, self.X_train)
         K_train_train = calculate_kernel_matrix(
-            self.X_train, self.X_train, self.kernel
+            self.X_train,
+            self.X_train,
+            self.kernel,
+            self.random_weights_distribution_name,
         ) + ZERO_REGULARIZATION * torch.eye(self.X_train.size(0))
 
         # Solve the symmetric system K_train_train @ y = K_x_train
@@ -149,7 +174,10 @@ class KernelRegressor(torch.nn.Module):
         """
         # Compute the kernel matrix K
         K = calculate_kernel_matrix(
-            self.X_train, self.X_train, self.kernel
+            self.X_train,
+            self.X_train,
+            self.kernel,
+            self.random_weights_distribution_name,
         ) + self.ridge * torch.eye(self.X_train.size(0))
 
         # Compute the condition number

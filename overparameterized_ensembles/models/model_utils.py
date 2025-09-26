@@ -1,6 +1,8 @@
 import torch
 import torch.nn.functional as F
 
+from overparameterized_ensembles.utils.constants import ZERO_REGULARIZATION
+
 ### Utils for the random features models
 
 
@@ -9,16 +11,14 @@ def initialize_random_weights_distribution(
 ):
     """
     Initialize the random weights distribution.
-
     Args:
-    random_weights_distribution_name : str
-        The name of the random weights distribution.
-    data_dimension : int
-        The dimension of the data.
-
+        random_weights_distribution_name : str
+            The name of the random weights distribution.
+        data_dimension : int
+            The dimension of the data.
     Returns:
-    random_weights_distribution : torch.distributions.Distribution
-        The random weights distribution.
+        random_weights_distribution : torch.distributions.Distribution
+            The random weights distribution.
     """
     if random_weights_distribution_name == "normal":
         mean_random_weights_distribution = torch.zeros(data_dimension)
@@ -26,8 +26,25 @@ def initialize_random_weights_distribution(
         random_weights_distribution = torch.distributions.MultivariateNormal(
             mean_random_weights_distribution, covariance_random_weights_distribution
         )
+    elif random_weights_distribution_name == "uniform":
+        low = -torch.tensor(10.0) * torch.ones(data_dimension)
+        high = torch.tensor(10.0) * torch.ones(data_dimension)
+        base_distribution = torch.distributions.Uniform(low, high)
+        # Make it an Independent distribution for proper batch sampling
+        random_weights_distribution = torch.distributions.Independent(
+            base_distribution, 1
+        )
+    elif random_weights_distribution_name == "laplace":
+        scale = 1.0
+        base_distribution = torch.distributions.Laplace(
+            torch.zeros(data_dimension), scale * torch.ones(data_dimension)
+        )
+        random_weights_distribution = torch.distributions.Independent(
+            base_distribution, 1
+        )
     else:
         raise ValueError("Invalid random weights distribution.")
+
     return random_weights_distribution
 
 
@@ -55,8 +72,9 @@ def sample_omega_and_calculate_phi(
         raise TypeError(
             "random_weights_distribution must be a torch.distributions.Distribution"
         )
-    if not isinstance(num_features, int):
-        raise TypeError("num_features must be an int")
+
+    # Convert numpy int to Python int
+    num_features = int(num_features)
 
     # Sample omega from the distribution random_weights_distribution for each feature
     omega = random_weights_distribution.sample((num_features,))
@@ -114,3 +132,59 @@ def calculate_phi(X, omega, activation_function_name):
     Phi = activation_function(X_omega)
 
     return Phi
+
+
+def calculate_variance_term(
+    X,
+    y,
+    num_features,
+    random_weights_distribution,
+    activation_function_name,
+    num_samples=100,
+):
+    """
+    Calculate the variance term Var[y^T (1/D Φ_i Φ_i^T)^{-1} y] across multiple samples.
+
+    Args:
+    X : torch.Tensor
+        Input data of shape (n_samples, n_features)
+    y : torch.Tensor
+        Target vector of shape (n_samples, 1)
+    num_features : int
+        Number of random features (D)
+    random_weights_distribution : torch.distributions.Distribution
+        Distribution for sampling random weights
+    activation_function_name : str
+        Name of activation function to use
+    num_samples : int
+        Number of Monte Carlo samples to estimate variance
+
+    Returns:
+    float:
+        Variance of the term across samples
+    """
+    terms = []
+    for _ in range(num_samples):
+        # Generate Phi matrix
+        Phi = sample_omega_and_calculate_phi(
+            X, activation_function_name, random_weights_distribution, num_features
+        )
+
+        # Calculate (1/D Φ_i Φ_i^T)
+        phi_phi_t = torch.mm(
+            Phi, Phi.t()
+        ) / num_features + ZERO_REGULARIZATION * torch.eye(Phi.shape[0])
+
+        try:
+            # Calculate inverse
+            inverse = torch.linalg.inv(phi_phi_t)
+
+            # Calculate y^T (1/D Φ_i Φ_i^T)^{-1} y
+            term = torch.mm(torch.mm(y.t(), inverse), y).item()
+            terms.append(term)
+        except torch.linalg.LinAlgError:
+            print(f"Warning: Singular matrix encountered for D={num_features}")
+            continue
+
+    # Calculate variance across samples
+    return torch.var(torch.tensor(terms)).item()

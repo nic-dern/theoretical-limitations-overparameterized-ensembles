@@ -231,17 +231,6 @@ class AverageDifferenceVsNumFeaturesExperiment(Experiment):
         return results
 
     def _visualize_results(self, results):
-        plt_title = ""
-        if self.experiment_parameters.case_type == "subexponential":
-            if self.experiment_parameters.activation_function == "relu":
-                plt_title = "ReLU Features"
-            elif self.experiment_parameters.activation_function == "erf":
-                plt_title = "Gaussian Error Function Features"
-            else:
-                plt_title = "Softplus Features"
-        elif self.experiment_parameters.case_type == "gaussian":
-            plt_title = "Gaussian Features"
-
         # Plot the average difference vs number of features
         plt = plot_graph(
             x_values=results["num_features_values"],
@@ -249,9 +238,8 @@ class AverageDifferenceVsNumFeaturesExperiment(Experiment):
             labels=["Average difference"],
             x_label="Number of features per model",
             y_label=r"$\| \bar{h}^{(LN)}_\infty - h^{(LN)}_\infty \|_{L^1}$",
-            title=plt_title,
             vline_x=self.experiment_parameters.num_training_samples,
-            vline_text=r"$N = D$",
+            vline_text=r"$N = \mathrm{Total\,Parameters}$",
             plot_legend=False,
         )
 
@@ -276,3 +264,7 @@ class AverageDifferenceVsNumFeaturesExperiment(Experiment):
 
             # Save the plot
             save_figure(plt, self.experiment_dir / "data_generating_function.pdf")
+
+
+if __name__ == "__main__":
+    app()

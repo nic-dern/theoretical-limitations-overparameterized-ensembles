@@ -123,7 +123,10 @@ class ConvergenceExpectedValueTermExperiment(Experiment):
 
         # Calculate the kernel matrix (including the test point)
         K_star = calculate_kernel_matrix(
-            X_star, X_star, self.experiment_parameters.kernel
+            X_star,
+            X_star,
+            self.experiment_parameters.kernel,
+            self.experiment_parameters.random_weights_distribution,
         )
 
         # Append a column of ones to the X_star matrix; this is not done before since the calculate_kernel_matrix-method automatically appends ones
@@ -159,17 +162,6 @@ class ConvergenceExpectedValueTermExperiment(Experiment):
         return (estimate, estimates)
 
     def _visualize_results(self, results):
-        title = ""
-        if self.experiment_parameters.case_type == "subexponential":
-            if self.experiment_parameters.activation_function == "relu":
-                title = "ReLU Features"
-            elif self.experiment_parameters.activation_function == "erf":
-                title = "Gaussian Error Function Features"
-            else:
-                title = "Unknown Features"
-        elif self.experiment_parameters.case_type == "gaussian":
-            title = "Gaussian Features"
-
         estimate, estimates = results
 
         # Save the estimate
@@ -193,7 +185,6 @@ class ConvergenceExpectedValueTermExperiment(Experiment):
         for i in range(estimates.shape[1]):
             fig = plot_distribution(
                 estimates[:, i],
-                title,
                 x_label=r"$[w_{\perp}^\top W^\top (W W^\top)^{-1}]_{"
                 + str(i + 1)
                 + "}$ (whitened finite model residual)"
@@ -208,3 +199,7 @@ class ConvergenceExpectedValueTermExperiment(Experiment):
                 self.experiment_dir
                 / f"convergence_expected_value_term_distribution_{i}.pdf",
             )
+
+
+if __name__ == "__main__":
+    app()

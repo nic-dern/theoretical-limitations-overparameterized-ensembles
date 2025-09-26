@@ -123,6 +123,7 @@ class RandomFeatureModelExperimentParameters(BaseExperimentParameters):
         random_weights_distribution: str,
         case_type: str,
         number_simulations_per_size: int,
+        plot_on_same_axis: bool = False,
     ):
         """Initialize random feature model experiment parameters.
 
@@ -149,6 +150,8 @@ class RandomFeatureModelExperimentParameters(BaseExperimentParameters):
                 Type of case to run.
             number_simulations_per_size : int
                 Number of simulations per size.
+            plot_on_same_axis : bool, optional
+                Whether to plot variance and r_perp_squared on the same axis. Defaults to False.
         """
         super().__init__(
             num_training_samples,
@@ -163,6 +166,7 @@ class RandomFeatureModelExperimentParameters(BaseExperimentParameters):
         self.activation_function = activation_function
         self.random_weights_distribution = random_weights_distribution
         self.case_type = case_type
+        self.plot_on_same_axis = plot_on_same_axis
 
 
 class Experiment(ABC):

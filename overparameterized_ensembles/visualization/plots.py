@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
-from typing import Optional, List, Tuple
+from typing import Optional, List, Tuple, Union
 from overparameterized_ensembles.utils.constants import (
     COLORS,
     LINE_STYLES,
@@ -66,7 +66,7 @@ def plot_development_of_mean(
 
 def plot_distribution(
     values: torch.Tensor,
-    title: str,
+    title: Optional[str] = None,
     x_min: Optional[float] = None,
     x_max: Optional[float] = None,
     x_label: str = "Sample value",
@@ -95,8 +95,6 @@ def plot_distribution(
     """
     if not isinstance(values, torch.Tensor):
         raise TypeError("values must be a torch.Tensor")
-    if not isinstance(title, str):
-        raise TypeError("title must be a str")
 
     # Close all open figures to avoid conflicts
     plt.close("all")
@@ -156,7 +154,9 @@ def plot_distribution(
     ax.yaxis.set_ticks_position("left")
     ax.xaxis.set_ticks_position("bottom")
 
-    ax.set_title(title, fontsize=SIZE_LARGE, fontweight="bold")
+    if title is not None:
+        ax.set_title(title, fontsize=SIZE_LARGE, fontweight="bold")
+
     ax.set_xlabel(x_label, fontsize=SIZE_DEFAULT)
     ax.set_ylabel("Frequency")
     ax.legend()
@@ -167,11 +167,12 @@ def plot_distribution(
 
 
 def plot_graph(
-    x_values: List[float],
+    x_values: Union[List[float], List[List[float]]],
     y_values: List[List[float]],
     labels: List[str],
     x_label: str,
     y_label: str,
+    colors: Optional[List[str]] = None,
     title: str = None,
     xlim: Optional[Tuple[float, float]] = None,
     ylim: Optional[Tuple[float, float]] = None,
@@ -181,14 +182,18 @@ def plot_graph(
     decay_slope: Optional[float] = None,
     plot_legend: bool = True,
     linestyles: List[str] = None,
+    y_error_values: Optional[List[List[float]]] = None,
+    use_scientific_notation: bool = False,
 ) -> plt:
     """
     This function plots a graph based on the provided parameters.
 
     Parameters:
-        x_values (List[float]): The x-values for the plot.
-        y_values (List[List[float]]): The y-values for the plot. Each list in y_values corresponds to a line on the plot.
+        x_values (Union[List[float], List[List[float]]]): Either a single list of x-values for all plots,
+            or a list of lists where each inner list contains x-values for the corresponding y_values.
+        y_values (List[List[float]]): The y-values for the plot. Each list in y_values corresponds to a line.
         labels (List[str]): The labels for the lines. Each label corresponds to a list in y_values.
+        x_label (str): The label for the x-axis.
         y_label (str): The label for the y-axis.
         title (str): The title of the plot.
         xlim (Optional[Tuple[float, float]]): The limits for the x-axis. If None, the limits are determined automatically.
@@ -199,12 +204,40 @@ def plot_graph(
         decay_slope (Optional[float]): The slope of the decaying line. If None, no decaying line is plotted.
         plot_legend (bool): If True, the legend is displayed.
         linestyles (List[str]): The linestyles for the lines. If None, the default linestyles are used.
+        y_error_values (Optional[List[List[float]]]): The error values for y_values, to be shown as shaded regions.
+            Each list in y_error_values corresponds to a list in y_values.
+        use_scientific_notation (bool): If True, scientific notation is used for axis formatting.
 
     Returns:
         plt: The matplotlib plot object.
     """
     if len(y_values) != len(labels):
         raise ValueError("The length of y_values and labels must be the same.")
+
+    if y_error_values is not None and len(y_error_values) != len(y_values):
+        raise ValueError(
+            "The length of y_error_values must match the length of y_values."
+        )
+
+    # Check if x_values is a single list or list of lists
+    if not isinstance(x_values[0], list):
+        # Convert single list to list of lists by repeating it
+        x_values = [x_values for _ in range(len(y_values))]
+
+    # Verify x_values and y_values match in length
+    if len(x_values) != len(y_values):
+        raise ValueError("Number of x_value lists must match number of y_value lists")
+    for x, y in zip(x_values, y_values):
+        if len(x) != len(y):
+            raise ValueError(
+                "Each x_values list must match length of corresponding y_values list"
+            )
+    if y_error_values is not None:
+        for x, y_err in zip(x_values, y_error_values):
+            if len(x) != len(y_err):
+                raise ValueError(
+                    "Each x_values list must match length of corresponding y_error_values list"
+                )
 
     # Close all open figures to avoid conflicts
     plt.close("all")
@@ -229,21 +262,44 @@ def plot_graph(
         ax.set_xscale("log")
         ax.set_yscale("log")
 
+    if colors is None:
+        colors = [COLORS[i % len(COLORS)] for i in range(len(y_values))]
+
     for i in range(len(y_values)):
-        ax.plot(
-            x_values,
-            y_values[i],
-            label=labels[i],
-            color=COLORS[i],
-            linewidth=2,
-            linestyle=LINE_STYLES[i % len(LINE_STYLES)]
-            if linestyles is None
-            else linestyles[i],
-        )
+        # Check if the label is None
+        if labels[i] is not None:
+            ax.plot(
+                x_values[i],  # Use corresponding x_values for each line
+                y_values[i],
+                label=labels[i],
+                color=colors[i],
+                linewidth=2,
+                linestyle=LINE_STYLES[i % len(LINE_STYLES)]
+                if linestyles is None
+                else linestyles[i],
+            )
+        else:
+            ax.plot(
+                x_values[i],  # Use corresponding x_values for each line
+                y_values[i],
+                color=colors[i],
+                linewidth=2,
+                linestyle=LINE_STYLES[i % len(LINE_STYLES)]
+                if linestyles is None
+                else linestyles[i],
+            )
+        if y_error_values is not None and y_error_values[i] is not None:
+            ax.fill_between(
+                x_values[i],
+                np.array(y_values[i]) - np.array(y_error_values[i]),
+                np.array(y_values[i]) + np.array(y_error_values[i]),
+                color=colors[i],
+                alpha=0.2,
+            )
 
     # Add diagonal grid lines with the specified slope if decay_slope is given
     if decay_slope is not None:
-        x_start = x_values[0]
+        x_start = x_values[0][0]
         y_max = max(
             [max(y) for y in y_values]
         )  # Get the maximum y value across all lines
@@ -257,20 +313,22 @@ def plot_graph(
         for y_start in y_start_points:
             # Calculate the y-values for the grid lines
             diagonal_y_values = [
-                y_start * (x / x_start) ** decay_slope for x in x_values
+                y_start * (x / x_start) ** decay_slope for x in x_values[0]
             ]
 
             # Plot the diagonal lines as grey dotted lines
             ax.plot(
-                x_values,
+                x_values[0],
                 diagonal_y_values,
                 color="grey",
                 linestyle="dotted",
                 linewidth=1,
             )
 
-    ax.set_xlabel(x_label, fontsize=SIZE_DEFAULT)
-    ax.set_ylabel(y_label, fontsize=SIZE_DEFAULT)
+    if x_label is not None:
+        ax.set_xlabel(x_label, fontsize=SIZE_DEFAULT)
+    if y_label is not None:
+        ax.set_ylabel(y_label, fontsize=SIZE_DEFAULT)
 
     if title is not None:
         ax.set_title(title, fontsize=SIZE_LARGE, fontweight="bold")
@@ -300,7 +358,7 @@ def plot_graph(
     # Only show ticks on the left and bottom spines
     ax.yaxis.set_ticks_position("left")
     ax.xaxis.set_ticks_position("bottom")
-    ax.spines["bottom"].set_bounds(min(x_values), max(x_values))
+    ax.spines["bottom"].set_bounds(min(x_values[0]), max(x_values[0]))
 
     if plot_legend:
         ax.legend()
@@ -316,7 +374,7 @@ def plot_multiple_lines(
     y_values: List[List[float]],
     x_label: str,
     y_label: str,
-    title: str,
+    title: str = None,
     xlim: Optional[Tuple[float, float]] = None,
     ylim: Optional[Tuple[float, float]] = None,
     loglog: bool = False,
@@ -364,7 +422,9 @@ def plot_multiple_lines(
 
     ax.set_xlabel(x_label, fontsize=SIZE_DEFAULT)
     ax.set_ylabel(y_label, fontsize=SIZE_DEFAULT)
-    ax.set_title(title, fontsize=SIZE_LARGE, fontweight="bold")
+
+    if title is not None:
+        ax.set_title(title, fontsize=SIZE_LARGE, fontweight="bold")
 
     if xlim is not None:
         ax.set_xlim(xlim)

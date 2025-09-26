@@ -166,6 +166,7 @@ class VisualizeModelsExperiment(Experiment):
             kernel_model = KernelRegressor(
                 kernel=self.experiment_parameters.kernel,
                 ridge=self.ridge,
+                random_weights_distribution_name=self.experiment_parameters.random_weights_distribution,
             )
             kernel_model.fit(X_train, y_train)
 
@@ -227,3 +228,7 @@ class VisualizeModelsExperiment(Experiment):
                 )
 
             save_figure(plt, self.experiment_dir / "models_visualization.pdf")
+
+
+if __name__ == "__main__":
+    app()

@@ -249,3 +249,7 @@ class GeneralizationErrorDecayExperiment(Experiment):
 
             # Save the plot
             save_figure(plt, self.experiment_dir / "data_generating_function.pdf")
+
+
+if __name__ == "__main__":
+    app()
